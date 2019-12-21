@@ -36,13 +36,14 @@ BufferPoolManager::~BufferPoolManager() {
 
 Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   // 1.     Search the page table for the requested page (P).
-  if(page_table_.count(page_id) > 0) {
+  if(page_table_.count(page_id) != 0) {
     // 1.1    If P exists, pin it and return it immediately. 
     //Pin in replacer if pin count is zero, incrment pin count
     if(pages_[page_table_[page_id]].pin_count_ == 0) {
+      pages_[page_table_[page_id]].pin_count_++;
       replacer_->Pin(page_table_[page_id]);
     }
-    pages_[page_table_[page_id]].pin_count_++;
+    
     return pages_ + page_table_[page_id];
   }
   // 1.2    If P does not exist, find a replacement page (R) from either the free list or the replacer.
@@ -52,6 +53,9 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
     replacement_frame_id = free_list_.front();
     free_list_.pop_front();
   } else {
+    if(replacer_->Size() == 0) {
+      return nullptr;
+    }
     replacer_->Victim(&replacement_frame_id);
   }
   // 2.     If R is dirty, write it back to the disk. (Page R = pages_[replacement_frame_id])
@@ -76,8 +80,10 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
   if(pages_[page_table_[page_id]].pin_count_ <= 0) {
     return false;
   } else {
-    //Decrement Pin count
-    pages_[page_table_[page_id]].pin_count_--;
+    //Decrement Pin count (When non-zero)
+    if(pages_[page_table_[page_id]].pin_count_ > 0) {
+      pages_[page_table_[page_id]].pin_count_--;
+    }
     //Set dirty flag if necessary (Occurs before unpinning)
     if(is_dirty) {
       pages_[page_table_[page_id]].is_dirty_ = true;
@@ -133,9 +139,13 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
     pages_[replacement_frame_id].RLatch();
     disk_manager_->ReadPage(*page_id, pages_[replacement_frame_id].GetData());
     pages_[replacement_frame_id].RUnlatch();
+
+    page_table_.erase(pages_[replacement_frame_id].GetPageId());
     page_table_[*page_id] = replacement_frame_id;
     // 4.   Set the page ID output parameter. Return a pointer to P.
     pages_[replacement_frame_id].page_id_ = *page_id;
+    //Initially pinned
+    pages_[replacement_frame_id].pin_count_ = 1;
     return pages_ + *page_id;
   }
 }

@@ -12,6 +12,7 @@
 
 #include <cstdio>
 #include <string>
+#include <iostream>
 
 #include "buffer/buffer_pool_manager.h"
 #include "gtest/gtest.h"
@@ -49,7 +50,7 @@ TEST(BufferPoolManagerTest, SampleTest) {
 
   // Scenario: After unpinning pages {0, 1, 2, 3, 4} and pinning another 4 new pages,
   // there would still be one buffer page left for reading page 0.
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 4; i > 0; --i) {
     EXPECT_EQ(true, bpm->UnpinPage(i, true));
   }
   for (int i = 0; i < 4; ++i) {
