@@ -56,6 +56,8 @@ class LinearProbeHashTable : public HashTable<KeyType, ValueType, KeyComparator>
    */
   bool Insert(Transaction *transaction, const KeyType &key, const ValueType &value) override;
 
+  int FindKeyAndDelete(Transaction *transaction, const KeyType &key, const ValueType &value);
+
   /**
    * Deletes the associated value for the given key.
    * @param transaction the current transaction
@@ -97,6 +99,9 @@ class LinearProbeHashTable : public HashTable<KeyType, ValueType, KeyComparator>
 
   // Hash function
   HashFunction<KeyType> hash_fn_;
+
+  //Auxillary pages
+  HashTableHeaderPage* header_page_;
 };
 
 }  // namespace bustub
